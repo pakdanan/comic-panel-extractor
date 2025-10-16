@@ -1,3 +1,4 @@
+import requests
 import streamlit as st
 from ultralytics import YOLO
 import cv2
@@ -51,17 +52,28 @@ def sort_panels_by_column_then_row(items, rtl_order: bool) -> list:
     return [d[0] for d in sorted_rows]
 
 # =============================
-# Load YOLO model for Comic Panel Detection 
-# Get from https://huggingface.co/mosesb/best-comic-panel-detection then place in ai-models/20250916/best.pt
+# Download model from Hugging Face (if needed) then load it
 # =============================
-MODEL_PATH = "ai-models/20250916/best.pt"
+MODEL_DIR = "ai-model"
+MODEL_PATH = os.path.join(MODEL_DIR, "best.pt")
+HUGGINGFACE_MODEL_URL = "https://huggingface.co/mosesb/best-comic-panel-detection/resolve/main/best.pt"
+
+if not os.path.exists(MODEL_PATH):
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    with st.spinner("📦 Downloading YOLO model from Hugging Face..."):
+        response = requests.get(HUGGINGFACE_MODEL_URL, stream=True)
+        total = int(response.headers.get("content-length", 0))
+        with open(MODEL_PATH, "wb") as f:
+            for data in response.iter_content(chunk_size=8192):
+                f.write(data)
+
 model = YOLO(MODEL_PATH)
 
 # =============================
 # Streamlit UI
 # =============================
-st.title("📚 Short Comic Panel Splitter")
-st.markdown("Upload a comic page, and the app will detect and split each panel automatically using a YOLOv8 model.")
+st.title("📚 Comic Panel Extractor")
+st.markdown("Upload a comic page, and the app will detect and split each panel automatically.")
 
 uploaded_file = st.file_uploader("Upload an image (JPG or PNG)", type=["jpg", "jpeg", "png"])
 rtl_order = st.checkbox("Right-to-left reading order", value=False)
